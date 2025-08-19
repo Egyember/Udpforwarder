@@ -14,8 +14,8 @@ var (
 )
 
 type args struct {
-	Bin    string
-	Config string
+	Bin  string
+	Conf string
 }
 
 func main() {
@@ -31,7 +31,7 @@ func main() {
 	defer f.Close()
 	var arg args
 	arg.Bin = *bin
-	arg.Config = *config
+	arg.Conf = *config
 	err = tmp.Execute(f, arg)
 	if err != nil {
 		panic(err)
