@@ -2,7 +2,7 @@ BIN = udpforward
 ARCH = arm64
 #ARCH = amd64
 IMAGE = $(BIN)
-VERSION = 0.2
+VERSION = 0.3
 DOCKERFILE = dockerfile
 CONFIG = config.toml
 
@@ -11,7 +11,7 @@ $(BIN): main.go
 	CGO_ENABLE=0 GOOS=linux GOARCH=$(ARCH) go build -o $(BIN)  --tags=netgo,osusergo
 
 $(IMAGE).tar: $(DOCKERFILE) $(BIN) $(CONFIG) .dockerignore
-	sudo docker buildx build  --tag $(IMAGE):$(VERSION) -f $(DOCKERFILE) --platform linux/$(ARCH) ./
+	sudo docker buildx build  -t $(IMAGE):$(VERSION) -f $(DOCKERFILE) --platform linux/$(ARCH) ./
 	sudo docker save $(IMAGE):$(VERSION)>$(IMAGE).tar
 	sudo docker rmi $(IMAGE):$(VERSION)
 

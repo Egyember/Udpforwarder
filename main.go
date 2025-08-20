@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"log/syslog"
 	"net"
 	"os"
 	"slices"
@@ -32,7 +31,6 @@ type rawRule struct {
 type rawConfig struct {
 	Rules []rawRule `toml:"rule"`
 	Log   bool      `toml:"log"`
-	Logaddr string	`toml:"logaddr"`
 }
 
 type rule struct {
@@ -42,24 +40,11 @@ type rule struct {
 type config struct {
 	rules []rule
 	log   bool
-	logaddr string
-}
-
-func (s config) String() string{
-	st := fmt.Sprintf("logging: %v\n", s.log)
-	for _, v:= range s.rules{
-		st += fmt.Sprintln("lisen:", *v.Lisen)
-		for _, w:= range v.Forward{
-		st += fmt.Sprintln("\tforward:", *w)
-		}
-	}
-	return st
 }
 
 func (s rawConfig) parese() (config, error) {
 	var c config
 	c.log = s.Log
-	c.logaddr = s.Logaddr
 	c.rules = make([]rule, len(s.Rules))
 	for k, v := range s.Rules {
 		l, err := v.Lisen.parese()
@@ -79,15 +64,13 @@ func (s rawConfig) parese() (config, error) {
 	return c, nil
 }
 
-func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id int, report chan int, log bool, logger *syslog.Writer) {
-	defer func(id int, report chan int, logger *syslog.Writer, log bool) {
+func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id int, report chan int, log bool) {
+	defer func(id int, report chan int) {
 		if r := recover(); r != nil {
-			if log{
-				fmt.Fprintln(logger, "lisener failed with error:", r)
-			}
+			fmt.Println("lisener failed with error:", r)
 			report <- id
 		}
-	}(id, report, logger, log)
+	}(id, report)
 	con, err := net.ListenUDP("udp", laddr)
 	if err != nil {
 		panic(err)
@@ -95,16 +78,13 @@ func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id in
 	defer con.Close()
 	// con.SetDeadline(time.Unix(0, 0)) // disable timeout
 	buffer := make([]byte, mtu)
-	if log {
-		fmt.Fprintln(logger,"staring lissener")
-	}
 	for {
 		n, addr, err := con.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
 		}
 		if log {
-			fmt.Fprintln(logger, "got packet")
+			fmt.Println("got packet")
 		}
 		for _, v := range forward {
 			f, err := net.DialUDP("udp", addr, v)
@@ -148,27 +128,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var sysLog *syslog.Writer
-	sysLog = nil
-	if conf.log{
-		sysLog, err = syslog.Dial("tcp", conf.logaddr,
-		syslog.LOG_WARNING|syslog.LOG_DAEMON, "udp_forward")
-		if err != nil {
-			panic(err)
-		}
-
-	}
 	crashed := make(chan int)
-	fmt.Println(conf)
 	for k, v := range conf.rules {
-		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed, conf.log, sysLog)
+		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed, conf.log)
 	}
 	for {
 		c := <-crashed
-		if conf.log{
-			fmt.Fprintln(sysLog, c, "th rule crashed restarting...")
-		}
-		go lisendAndForward(maxmtu, conf.rules[c].Lisen, conf.rules[c].Forward, c, crashed, conf.log, sysLog)
+		fmt.Println(c, "th rule crashed restarting...")
+		go lisendAndForward(maxmtu, conf.rules[c].Lisen, conf.rules[c].Forward, c, crashed, conf.log)
 
 	}
 }
