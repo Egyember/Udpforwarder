@@ -27,6 +27,7 @@ func (s textaddr) parese() (net.UDPAddr, error) {
 type rawRule struct {
 	Lisen   textaddr   `toml:"lisen"`
 	Forward []textaddr `toml:"forward"`
+	UseSrc   bool   `toml:"use-src"`
 }
 
 type rawConfig struct {
@@ -38,6 +39,7 @@ type rawConfig struct {
 type rule struct {
 	Lisen   *net.UDPAddr
 	Forward []*net.UDPAddr
+	UseSrc  bool 
 }
 type config struct {
 	rules []rule
@@ -49,6 +51,7 @@ func (s config) String() string{
 	st := fmt.Sprintf("logging: %v\n", s.log)
 	for _, v:= range s.rules{
 		st += fmt.Sprintln("lisen:", *v.Lisen)
+		st += fmt.Sprintln("\tuse-src:", v.UseSrc)
 		for _, w:= range v.Forward{
 		st += fmt.Sprintln("\tforward:", *w)
 		}
@@ -67,6 +70,7 @@ func (s rawConfig) parese() (config, error) {
 			panic(err)
 		}
 		c.rules[k].Lisen = &l
+		c.rules[k].UseSrc = v.UseSrc
 		c.rules[k].Forward = make([]*net.UDPAddr, len(v.Forward))
 		for j, w := range v.Forward {
 			l, err := w.parese()
@@ -79,7 +83,7 @@ func (s rawConfig) parese() (config, error) {
 	return c, nil
 }
 
-func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id int, report chan int, log bool, logger *syslog.Writer) {
+func lisendAndForward(mtu int, rule rule, id int, report chan int, log bool, logger *syslog.Writer) {
 	defer func(id int, report chan int, logger *syslog.Writer, log bool) {
 		if r := recover(); r != nil {
 			if log{
@@ -88,7 +92,7 @@ func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id in
 			report <- id
 		}
 	}(id, report, logger, log)
-	con, err := net.ListenUDP("udp", laddr)
+	con, err := net.ListenUDP("udp", rule.Lisen)
 	if err != nil {
 		panic(err)
 	}
@@ -104,9 +108,12 @@ func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id in
 			panic(err)
 		}
 		if log {
-			fmt.Fprintln(logger, "got packet")
+			fmt.Fprintln(logger, "got packet from ", *addr)
 		}
-		for _, v := range forward {
+		if !rule.UseSrc{
+		addr.IP = net.IP{}
+		}
+		for _, v := range rule.Forward {
 			f, err := net.DialUDP("udp", addr, v)
 			if err != nil {
 				panic(err)
@@ -161,14 +168,14 @@ func main() {
 	crashed := make(chan int)
 	fmt.Println(conf)
 	for k, v := range conf.rules {
-		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed, conf.log, sysLog)
+		go lisendAndForward(maxmtu, v, k, crashed, conf.log, sysLog)
 	}
 	for {
 		c := <-crashed
 		if conf.log{
 			fmt.Fprintln(sysLog, c, "th rule crashed restarting...")
 		}
-		go lisendAndForward(maxmtu, conf.rules[c].Lisen, conf.rules[c].Forward, c, crashed, conf.log, sysLog)
+		go lisendAndForward(maxmtu, conf.rules[c], c, crashed, conf.log, sysLog)
 
 	}
 }

@@ -2,9 +2,13 @@ log = true
 logaddr = "192.168.3.110:514"
 [[rule]]
 lisen = {ip = "", port = 6667}
+use-src = false
 [[rule.forward]]
 ip = "192.168.0.2"
 port = 6667
 [[rule.forward]]
 ip = "10.0.1.2"
+port = 6667
+[[rule.forward]]
+ip = "10.0.1.4"
 port = 6667
