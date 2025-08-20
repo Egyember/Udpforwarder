@@ -42,6 +42,17 @@ type config struct {
 	log   bool
 }
 
+func (s config) String() string{
+	st := fmt.Sprintf("logging: %v\n", s.log)
+	for _, v:= range s.rules{
+		st += fmt.Sprintln("lisen:", *v.Lisen)
+		for _, w:= range v.Forward{
+		st += fmt.Sprintln("\tforward:", *w)
+		}
+	}
+	return st
+}
+
 func (s rawConfig) parese() (config, error) {
 	var c config
 	c.log = s.Log
@@ -78,6 +89,9 @@ func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id in
 	defer con.Close()
 	// con.SetDeadline(time.Unix(0, 0)) // disable timeout
 	buffer := make([]byte, mtu)
+	if log {
+		fmt.Println("staring lissener")
+	}
 	for {
 		n, addr, err := con.ReadFromUDP(buffer)
 		if err != nil {
@@ -129,6 +143,7 @@ func main() {
 		panic(err)
 	}
 	crashed := make(chan int)
+	fmt.Println(conf)
 	for k, v := range conf.rules {
 		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed, conf.log)
 	}
