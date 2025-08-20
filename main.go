@@ -7,7 +7,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/pelletier/go-toml/v2"
 )
@@ -31,16 +30,21 @@ type rawRule struct {
 
 type rawConfig struct {
 	Rules []rawRule `toml:"rule"`
+	Log   bool      `toml:"log"`
 }
 
 type rule struct {
 	Lisen   *net.UDPAddr
 	Forward []*net.UDPAddr
 }
-type config struct{ rules []rule }
+type config struct {
+	rules []rule
+	log   bool
+}
 
 func (s rawConfig) parese() (config, error) {
 	var c config
+	c.log = s.Log
 	c.rules = make([]rule, len(s.Rules))
 	for k, v := range s.Rules {
 		l, err := v.Lisen.parese()
@@ -60,7 +64,7 @@ func (s rawConfig) parese() (config, error) {
 	return c, nil
 }
 
-func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id int, report chan int) {
+func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id int, report chan int, log bool) {
 	defer func(id int, report chan int) {
 		if r := recover(); r != nil {
 			fmt.Println("lisener failed with error:", r)
@@ -72,12 +76,15 @@ func lisendAndForward(mtu int, laddr *net.UDPAddr, forward []*net.UDPAddr, id in
 		panic(err)
 	}
 	defer con.Close()
-	con.SetDeadline(time.Unix(0, 0)) // disable timeout
+	// con.SetDeadline(time.Unix(0, 0)) // disable timeout
 	buffer := make([]byte, mtu)
 	for {
 		n, addr, err := con.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
+		}
+		if log {
+			fmt.Println("got packet")
 		}
 		for _, v := range forward {
 			f, err := net.DialUDP("udp", addr, v)
@@ -123,12 +130,12 @@ func main() {
 	}
 	crashed := make(chan int)
 	for k, v := range conf.rules {
-		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed)
+		go lisendAndForward(maxmtu, v.Lisen, v.Forward, k, crashed, conf.log)
 	}
 	for {
 		c := <-crashed
 		fmt.Println(c, "th rule crashed restarting...")
-		go lisendAndForward(maxmtu, conf.rules[c].Lisen, conf.rules[c].Forward, c, crashed)
+		go lisendAndForward(maxmtu, conf.rules[c].Lisen, conf.rules[c].Forward, c, crashed, conf.log)
 
 	}
 }

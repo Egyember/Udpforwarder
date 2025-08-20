@@ -1,4 +1,4 @@
 FROM scratch
 COPY {{.Bin}} /{{.Bin}}
 COPY {{.Conf}} /{{.Conf}}
-ENTRYPOINT ["{{.Bin}}"]
+ENTRYPOINT ["/{{.Bin}}"]

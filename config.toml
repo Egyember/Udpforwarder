@@ -1,13 +1,9 @@
+log = true
 [[rule]]
 lisen = {ip = "", port = 6667}
 [[rule.forward]]
 ip = "192.168.0.2"
 port = 6667
 [[rule.forward]]
-ip = "192.168.0.3"
+ip = "10.0.1.2"
 port = 6667
-[[rule]]
-lisen = {ip = "", port = 6668}
-[[rule.forward]]
-ip = "192.168.0.3"
-port = 6668
