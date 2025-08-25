@@ -34,6 +34,13 @@ Configuration uses a toml file in the same directory as the main executable.
 | log | boolian | true | whenever to do logs to a syslog server or not |
 | logaddr | string | "192.168.3.110:514" | ip addres and port of the syslog server |
 | rule | array of tables | see rules below | rules for forwarding packets |
+| lisen | table |  {ip = "", port = 6667}  | ip and port to lisen on form packets |
 
 ## rules
-todo
+| name of option   | type   | Example   | what it dose   |
+| --- | --- | --- | --- |
+| ip | string | "192.168.0.2" | target ip address |
+| port | intiger | 6667 | target port to forward packets |
+| use-src | boolian | true | use the source address of the packet or send it from local address. This option requires net.ipv4.ip_nonlocal_bind = 1 kernel parameter on linux. Not tested on other platforms |
+
+An example can be found in config.toml
