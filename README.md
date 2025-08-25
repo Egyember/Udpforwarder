@@ -30,7 +30,7 @@ The filale image is around 4 mb in size and only contain the absolutely nesesery
 Configuration uses a toml file in the same directory as the main executable.
 ## Global options
 | name of option   | type   | Example   | what it dose   |
-| --- | --- |
+| --- | --- | --- | --- |
 | log | boolian | true | whenever to do logs to a syslog server or not |
 | logaddr | string | "192.168.3.110:514" | ip addres and port of the syslog server |
 | rule | array of tables | see rules below | rules for forwarding packets |
