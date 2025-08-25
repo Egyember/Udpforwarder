@@ -26,5 +26,5 @@ if everything works as it should it will echo out all commands that it run and y
 This option uses the config.toml in this repository for configuration. In the image it will be in the root directory if you whant to overlay it.
 The filale image is around 4 mb in size and only contain the absolutely nesesery files. (ie: no libc or gnu utils)
 
-#configuration
+# configuration
 todo
