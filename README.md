@@ -22,7 +22,7 @@ This requires make.
    ```bash
    make build
    ```
-   if everything works as it should it will echo out all commands that it run and you will have a docker image with the name speciflyed in the Makefile with a tar subfix.
+if everything works as it should it will echo out all commands that it run and you will have a docker image with the name speciflyed in the Makefile with a tar subfix.
 This option uses the config.toml in this repository for configuration. In the image it will be in the root directory if you whant to overlay it.
 The filale image is around 4 mb in size and only contain the absolutely nesesery files. (ie: no libc or gnu utils)
 
