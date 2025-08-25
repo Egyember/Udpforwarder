@@ -2,7 +2,7 @@ BIN = udpforward
 ARCH = arm64
 #ARCH = amd64
 IMAGE = $(BIN)
-VERSION = 0.3
+VERSION = 1.0
 DOCKERFILE = dockerfile
 CONFIG = config.toml
 
