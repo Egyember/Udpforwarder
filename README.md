@@ -15,7 +15,7 @@ go build
 ```
 An executable binary will be created. For configuration it will use a file in the same directory. An example can be found in config.toml
 ### docker image
-This requires make.  
+This requires make and docker buildx.  
 1. set the architecture in the Makefile
 2. Make sure the docker daemon is running
 3. Run the following commands
