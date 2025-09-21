@@ -26,6 +26,7 @@ if everything works as it should it will echo out all commands that it run and y
 This option uses the config.toml in this repository for configuration. In the image it will be in the root directory if you want to overlay it.
 The final image is around 4 mb in size and only contain the absolutely necessary files. (ie: no libc or gnu utils)
 
+*see makefile for more options*
 # configuration
 Configuration uses a toml file in the same directory as the main executable.
 ## Global options
