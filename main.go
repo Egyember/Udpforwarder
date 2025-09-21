@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"log"
 	"log/syslog"
 	"net"
 	"os"
@@ -27,33 +28,33 @@ func (s textaddr) parese() (net.UDPAddr, error) {
 type rawRule struct {
 	Lisen   textaddr   `toml:"lisen"`
 	Forward []textaddr `toml:"forward"`
-	UseSrc   bool   `toml:"use-src"`
+	UseSrc  bool       `toml:"use-src"`
 }
 
 type rawConfig struct {
-	Rules []rawRule `toml:"rule"`
-	Log   bool      `toml:"log"`
-	Logaddr string	`toml:"logaddr"`
+	Rules   []rawRule `toml:"rule"`
+	Log     bool      `toml:"syslog"`
+	Logaddr string    `toml:"logaddr"`
 }
 
 type rule struct {
 	Lisen   *net.UDPAddr
 	Forward []*net.UDPAddr
-	UseSrc  bool 
+	UseSrc  bool
 }
 type config struct {
-	rules []rule
-	log   bool
+	rules   []rule
+	syslog  bool
 	logaddr string
 }
 
-func (s config) String() string{
-	st := fmt.Sprintf("logging: %v\n", s.log)
-	for _, v:= range s.rules{
+func (s config) String() string {
+	st := fmt.Sprintf("logging: %v\n", s.syslog)
+	for _, v := range s.rules {
 		st += fmt.Sprintln("lisen:", *v.Lisen)
 		st += fmt.Sprintln("\tuse-src:", v.UseSrc)
-		for _, w:= range v.Forward{
-		st += fmt.Sprintln("\tforward:", *w)
+		for _, w := range v.Forward {
+			st += fmt.Sprintln("\tforward:", *w)
 		}
 	}
 	return st
@@ -61,7 +62,7 @@ func (s config) String() string{
 
 func (s rawConfig) parese() (config, error) {
 	var c config
-	c.log = s.Log
+	c.syslog = s.Log
 	c.logaddr = s.Logaddr
 	c.rules = make([]rule, len(s.Rules))
 	for k, v := range s.Rules {
@@ -83,15 +84,13 @@ func (s rawConfig) parese() (config, error) {
 	return c, nil
 }
 
-func lisendAndForward(mtu int, rule rule, id int, report chan int, log bool, logger *syslog.Writer) {
-	defer func(id int, report chan int, logger *syslog.Writer, log bool) {
+func lisendAndForward(mtu int, rule rule, id int, report chan int, logger *log.Logger) {
+	defer func(id int, report chan int, logger *log.Logger) {
 		if r := recover(); r != nil {
-			if log{
-				fmt.Fprintln(logger, "lisener failed with error:", r)
-			}
+			logger.Println("lisener failed with error:", r)
 			report <- id
 		}
-	}(id, report, logger, log)
+	}(id, report, logger)
 	con, err := net.ListenUDP("udp", rule.Lisen)
 	if err != nil {
 		panic(err)
@@ -99,19 +98,15 @@ func lisendAndForward(mtu int, rule rule, id int, report chan int, log bool, log
 	defer con.Close()
 	// con.SetDeadline(time.Unix(0, 0)) // disable timeout
 	buffer := make([]byte, mtu)
-	if log {
-		fmt.Fprintln(logger,"staring lissener")
-	}
+	logger.Println("staring lissener")
 	for {
 		n, addr, err := con.ReadFromUDP(buffer)
 		if err != nil {
 			panic(err)
 		}
-		if log {
-			fmt.Fprintln(logger, "got packet from ", *addr)
-		}
-		if !rule.UseSrc{
-		addr.IP = net.IP{}
+		logger.Println("got packet from ", *addr)
+		if !rule.UseSrc {
+			addr.IP = net.IP{}
 		}
 		for _, v := range rule.Forward {
 			f, err := net.DialUDP("udp", addr, v)
@@ -125,6 +120,8 @@ func lisendAndForward(mtu int, rule rule, id int, report chan int, log bool, log
 	}
 }
 
+var configfile = "config.toml"
+
 func main() {
 	inf, err := net.Interfaces()
 	if err != nil {
@@ -135,7 +132,7 @@ func main() {
 		mtus[k] = v.MTU
 	}
 	maxmtu := slices.Max(mtus)
-	bconf, err := os.ReadFile("config.toml")
+	bconf, err := os.ReadFile(configfile)
 	if err != nil {
 		panic(err)
 	}
@@ -155,27 +152,27 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	var sysLog *syslog.Writer
-	sysLog = nil
-	if conf.log{
-		sysLog, err = syslog.Dial("tcp", conf.logaddr,
-		syslog.LOG_WARNING|syslog.LOG_DAEMON, "udp_forward")
+	var logger *log.Logger
+	if conf.syslog {
+		sysLog, err := syslog.Dial("tcp", conf.logaddr,
+			syslog.LOG_WARNING|syslog.LOG_DAEMON, "udp_forward")
 		if err != nil {
 			panic(err)
 		}
+		logger = log.New(sysLog, "", log.Ldate)
 
+	} else {
+		logger = log.Default()
 	}
 	crashed := make(chan int)
 	fmt.Println(conf)
 	for k, v := range conf.rules {
-		go lisendAndForward(maxmtu, v, k, crashed, conf.log, sysLog)
+		go lisendAndForward(maxmtu, v, k, crashed, logger)
 	}
 	for {
 		c := <-crashed
-		if conf.log{
-			fmt.Fprintln(sysLog, c, "th rule crashed restarting...")
-		}
-		go lisendAndForward(maxmtu, conf.rules[c], c, crashed, conf.log, sysLog)
+		logger.Println(c, "th rule crashed restarting...")
+		go lisendAndForward(maxmtu, conf.rules[c], c, crashed, logger)
 
 	}
 }

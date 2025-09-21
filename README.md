@@ -31,7 +31,7 @@ Configuration uses a toml file in the same directory as the main executable.
 ## Global options
 | name of option   | type   | Example   | what it dose   |
 | --- | --- | --- | --- |
-| log | boolean | true | whenever to send logs to a syslog server or not |
+| syslog | boolean | true | whenever to send logs to a syslog server or not |
 | logaddr | string | "192.168.3.110:514" | ip addres and port of the syslog server |
 | rule | array of tables | see rules below | rules for forwarding packets |
 | listen | table |  {ip = "", port = 6667}  | ip and port to listen on form packets |

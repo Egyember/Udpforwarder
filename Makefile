@@ -8,7 +8,7 @@ CONFIG = config.toml
 
 build: $(IMAGE).tar
 $(BIN): main.go
-	CGO_ENABLE=0 GOOS=linux GOARCH=$(ARCH) go build -o $(BIN)  --tags=netgo,osusergo
+	CGO_ENABLE=0 GOOS=linux GOARCH=$(ARCH) go build -o $(BIN)  --tags=netgo,osusergo -ldflags "-X main.configfile=$(CONFIG)"
 
 $(IMAGE).tar: $(DOCKERFILE) $(BIN) $(CONFIG) .dockerignore
 	sudo docker buildx build  --tag $(IMAGE):$(VERSION) -f $(DOCKERFILE) --platform linux/$(ARCH) ./

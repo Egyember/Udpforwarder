@@ -1,4 +1,4 @@
-log = true
+syslog = true
 logaddr = "192.168.3.110:514"
 [[rule]]
 lisen = {ip = "", port = 6667}
